@@ -1,4 +1,4 @@
 venv/
 *.swp
 *.pyc
-proxy.txt
+./proxy.txt
