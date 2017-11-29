@@ -139,7 +139,3 @@ class Proxy:
 
         self.save_proxy()
 
-if __name__ == '__main__':
-    proxy = Proxy()
-    proxy.run()
-
