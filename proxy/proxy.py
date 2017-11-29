@@ -60,7 +60,7 @@ class Proxy:
         proxy    = {protocol: my_proxy}
 
         try:
-            res = requests.get(url, proxies = proxy, timeout = 2)
+            res = requests.get(url, proxies = proxy, timeout = 1)
 
             return res.status_code == 200
         except:
@@ -135,6 +135,6 @@ class Proxy:
         end_time = time.time()
         t        = round(end_time - start_time)
         total    = self.available_proxy.qsize()
-        print('\nProxy检测完成, {}个可用, 耗时{}s, 暂存: {}'.format(total, t, self.proxy_file))
+        print('\nProxy检测完成, {}个可用, 耗时{}s, 存放: {}'.format(total, t, self.proxy_file))
 
         self.save_proxy()
