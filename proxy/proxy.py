@@ -138,4 +138,3 @@ class Proxy:
         print('\nProxy检测完成, {}个可用, 耗时{}s, 暂存: {}'.format(total, t, self.proxy_file))
 
         self.save_proxy()
-
