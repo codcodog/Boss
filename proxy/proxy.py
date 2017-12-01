@@ -135,6 +135,9 @@ class Proxy:
         end_time = time.time()
         t        = round(end_time - start_time)
         total    = self.available_proxy.qsize()
-        print('\nProxy检测完成, {}个可用, 耗时{}s, 存放: {}'.format(total, t, self.proxy_file))
+        print('\nProxy检测完成, {}个可用, 耗时{}s.'.format(total, t))
+        print('\n')
 
-        self.save_proxy()
+        # 取消写入proxy.txt文件, 直接返回queue对象
+        # self.save_proxy()
+        return self.available_proxy
