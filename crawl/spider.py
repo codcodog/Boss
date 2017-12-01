@@ -1,9 +1,13 @@
 import random
 import sys
+import queue
+import threading
 
 import requests
 from bs4 import BeautifulSoup
 
+# 全局互斥锁
+mutex = threading.Lock()
 class Spider:
     '''
     @param  城市代号: 深圳
@@ -19,20 +23,23 @@ class Spider:
         'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36'
     ]
 
-    def __init__(self, key_word):
+    def __init__(self, key_word, proxy = None):
         '''
         @param  搜索职位关键字, 例如: php, python...
         @param  城市区域
         @param  命令行写入文本的长度(单行)
+        @param  代理ip, queue类型
         '''
         self.key_word   = key_word
         self.area       = {}
         self.status_len = 0
+        self.proxy      = proxy
+        self.page       = 1
 
     def write_cli(self, msg):
         ''' 命令行输出文本, 不换行
 
-        @ToDo
+        @bug
         遇到比较诡异的情况, 就是宽屏的时候, 一行没有超过屏幕, 按照正常输出:
         盐田区: 大梅沙 沙头角 
         宝安区: 西乡 新安 龙华 民治 福永 沙井 翻身路 石岩 观澜 锦绣江南 桃源居 坂田 松岗 
@@ -113,12 +120,9 @@ class Spider:
             data = []
             for tag in dl_res[0].find_all('a'):
                 if (tag.string != '不限'):
-                    ka       = tag.attrs['ka']
-                    business = tag.string
-                    data.append([business, ka])
-                    self.area[area] = data
+                    self.area[area].append(tag.string)
 
-                    msg = msg + business + ' '
+                    msg = msg + tag.string + ' '
                     self.write_cli(msg)
 
             sys.stdout.write('\n')
@@ -127,29 +131,113 @@ class Spider:
         print('\n')
 
     def get_position(self):
-        ''' 爬取职位信息
+        ''' 爬取职位
         '''
         print('############## 职位信息爬取 ##############')
 
-        url_template = "https://www.zhipin.com/c{city}/a_{business}-b_{area}-h_{city}/?query={key_word}&page={page}&ka=page-{page}"
+        url_template = "https://www.zhipin.com/c{city}/a_{business}-b_{area}-h_{city}/?query={key_word}"
         for area, business in self.area.items():
+            # 删除第一个无关元素
+            del business[0]
+
             for i in business:
                 # 经测试, 20页数据就没了, 这里给100, 若发现没有找到 job list, 则中止, break
-                for page in range(1, 100):
-                    url = url_template.format(area = area, business = i[0], city = Spider.city, key_word = self.key_word, page = page)
-                    header = {
-                        'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)]
-                    }
-                    html = requests.get(url, headers = header).content.decode('utf-8')
-                    soup = BeautifulSoup(html, 'lxml')
+                url = url_template.format(area = area, business = i, city = Spider.city, key_word = self.key_word)
+                self.page = 1
+                self.concurrent_crawl(url)
+                return
 
+    def concurrent_crawl(self, url):
+        ''' 多线程爬取
+        '''
+        thread_num = 1
+        thread_list = []
+
+        for i in range(thread_num):
+            t = threading.Thread(target = self.crawl_position, args = (url, ))
+            thread_list.append(t)
+        for t in thread_list:
+            t.start()
+        for t in thread_list:
+            t.join()
+        return
+
+
+    def crawl_position(self, url):
+        ''' 爬取职位信息
+        '''
+        proxy = self.get_proxy()
+
+        while (True):
+            url_template = url + "&page={page}&ka=page-{page}"
+            url          = url_template.format(page = self.page)
+
+            # 修改线程共享变量
+            if (mutex.acquire()):
+                self.page += 1
+                mutex.release()
+
+            header = {
+                'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)]
+            }
+
+            while (True):
+                # connetion error 则换proxy, proxy失效
+                try:
+                    html = requests.get(url, headers = header, proxies = proxy).content.decode('utf-8')
+                except requests.exceptions.RequestException:
+                    proxy = self.get_proxy()
+                    continue
+
+                soup     = BeautifulSoup(html, 'lxml')
+                job_list = soup.find_all('div', class_ = 'job-list')
+
+                # 如果没有job_list, 说明请求过多需要输入验证码, 更换proxy重新请求
+                if (not job_list):
+                    proxy = self.get_proxy()
+                    print(33)
+                    continue
+                # 有数据则退出循环
+                else:
+                    break
+
+            job_li = job_list[0].find_all('li')
+
+            # 如果没有job_li, 说明没有数据了, 不用下一页了
+            if (not job_li):
+                break
+
+            self.parse_position(job_li)
+            return
+
+    def parse_position(self, li_list):
+        ''' 解释职位html
+        包括:
+        工资, 年限, 行业类别, 融资阶段, 公司规模, 职位发布时间
+        '''
+        for item in li_list:
+            print(item)
+            raise SystemExit
+
+    def get_proxy(self):
+        ''' 获取proxy
+        '''
+        # 用完proxy, 则退出程序, 不再向下执行
+        if (self.proxy.empty()):
+            print('Proxy 已经用完.')
+            raise SystemExit
+        else:
+            my_proxy = self.proxy.get()
+            protocol = my_proxy.split(':')[0]
+            proxy    = {protocol: my_proxy}
+
+            return proxy
 
     def run(self):
         self.get_area()
         self.get_business()
         self.get_position()
 
-
 if __name__ == '__main__':
     spider = Spider('php')
-    spider.run()
+    spider.parse_position()
