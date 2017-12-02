@@ -8,9 +8,10 @@ import requests
 from bs4 import BeautifulSoup
 
 class Proxy:
-    def __init__(self):
-        self.html_path       = os.getcwd() + '/html/'
-        self.proxy_file      = os.getcwd() + '/proxy.txt'
+    def __init__(self, html_path = None, proxy_file = None):
+        # 基于项目Boss下执行的路径
+        self.html_path       = html_path
+        self.proxy_file      = proxy_file
         self.proxy           = queue.Queue()
         self.available_proxy = queue.Queue()
         self.size            = 0
@@ -55,7 +56,7 @@ class Proxy:
     def is_active(self, my_proxy):
         ''' proxy是否存活可用
         '''
-        url      = 'http://www.baidu.com/'   # 测试url
+        url      = 'https://www.zhipin.com/'
         protocol = my_proxy.split(':')[0]
         proxy    = {protocol: my_proxy}
 
