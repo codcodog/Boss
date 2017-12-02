@@ -15,12 +15,6 @@ class Boss:
 
 
 if __name__ == '__main__':
-    db = db.Db(Boss.boss_db)
-    db.create_db_file()
-    row = db.insert_info('南山区', '科技园', '20k', '三年', '互联网')
-    print(row)
-    raise SystemExit
-
     # 获取代理ip
     proxy = proxy.Proxy(Boss.html, Boss.proxy_txt)
     proxy = proxy.run()
