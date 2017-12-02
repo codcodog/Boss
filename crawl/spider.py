@@ -145,12 +145,11 @@ class Spider:
                 url = url_template.format(area = area, business = i, city = Spider.city, key_word = self.key_word)
                 self.page = 1
                 self.concurrent_crawl(url)
-                return
 
     def concurrent_crawl(self, url):
         ''' 多线程爬取
         '''
-        thread_num = 1
+        thread_num = 2
         thread_list = []
 
         for i in range(thread_num):
@@ -160,21 +159,21 @@ class Spider:
             t.start()
         for t in thread_list:
             t.join()
-        return
 
 
     def crawl_position(self, url):
         ''' 爬取职位信息
         '''
         proxy = self.get_proxy()
+        url_template = url + "&page={page}&ka=page-{page}"
 
         while (True):
-            url_template = url + "&page={page}&ka=page-{page}"
             url          = url_template.format(page = self.page)
 
             # 修改线程共享变量
             if (mutex.acquire()):
                 self.page += 1
+                print('当前页数: %s' % self.page)
                 mutex.release()
 
             header = {
@@ -184,8 +183,11 @@ class Spider:
             while (True):
                 # connetion error 则换proxy, proxy失效
                 try:
-                    html = requests.get(url, headers = header, proxies = proxy).content.decode('utf-8')
+                    print('正在请求: %s' % url)
+                    html = requests.get(url, headers = header, proxies = proxy, timeout = 5).content.decode('utf-8')
+                    print('请求完成.')
                 except requests.exceptions.RequestException:
+                    print('proxy失效, 更新proxy重新请求.')
                     proxy = self.get_proxy()
                     continue
 
@@ -194,8 +196,8 @@ class Spider:
 
                 # 如果没有job_list, 说明请求过多需要输入验证码, 更换proxy重新请求
                 if (not job_list):
+                    print('请求过多, 要求输入验证码, 更换proxy重新请求.')
                     proxy = self.get_proxy()
-                    print(33)
                     continue
                 # 有数据则退出循环
                 else:
@@ -208,7 +210,6 @@ class Spider:
                 break
 
             self.parse_position(job_li)
-            return
 
     def parse_position(self, li_list):
         ''' 解释职位html
@@ -216,8 +217,29 @@ class Spider:
         工资, 年限, 行业类别, 融资阶段, 公司规模, 职位发布时间
         '''
         for item in li_list:
-            print(item)
-            raise SystemExit
+            # 薪资
+            span_res = item.find_all('span', class_ = 'red')
+            salary   = span_res[0].string
+
+            # 工作年限
+            p_res = item.find_all('div', class_ = 'info-primary')[0].find_all('p')[0]
+            p_res = str(p_res)
+            tag = '''<em class="vline"></em>'''
+            age = p_res.split(tag)[1]
+
+            # 行业类型,融资, 规模
+            p1_res = item.find_all('div', class_ = 'company-text')[0].find_all('p')[0]
+            p1_res = str(p1_res)
+            tmp_list = p1_res.split(tag)
+            company_type = tmp_list[0].replace('<p>', '')
+            company_money = tmp_list[1]
+            # @toDo list index out of range
+            company_people = tmp_list[2].replace('</p>', '')
+
+            data = salary, age, company_type, company_money, company_people
+            print(data)
+
+
 
     def get_proxy(self):
         ''' 获取proxy
@@ -239,5 +261,8 @@ class Spider:
         self.get_position()
 
 if __name__ == '__main__':
-    spider = Spider('php')
-    spider.parse_position()
+    a = '''<p>深圳<em class="vline"></em>3-5年<em class="vline"></em>大专</p>'''
+    print(type(a))
+    b = '''<em class="vline"></em>'''
+    res = a.split(b)
+    print(res)
