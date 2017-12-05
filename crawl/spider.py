@@ -3,10 +3,10 @@ import sys
 import queue
 import threading
 import time
+import datetime
 
 import requests
 from bs4 import BeautifulSoup
-from proxy.proxy import Proxy
 from crawl.db import Db
 
 # 全局互斥锁
@@ -35,6 +35,7 @@ class Spider:
         @param  代理ip队列
         @param  当前请求的页数
         @param  sqlite3 数据库对象
+        @param  写入数据库的队列: 职位信息
         '''
         self.key_word   = key_word
         self.area       = {}
@@ -42,6 +43,7 @@ class Spider:
         self.proxy      = proxy
         self.page       = 1
         self.db         = Db(db_file)
+        self.position   = queue.Queue()
 
     def write_cli(self, msg):
         ''' 命令行输出文本, 不换行
@@ -75,18 +77,21 @@ class Spider:
     def get_area(self):
         ''' 获取某城市的区域
         '''
-        print('############## 区域爬取 ##############')
+        print('\n############## 区域爬取 ##############')
 
-        url = 'https://www.zhipin.com/job_detail/?query={key_word}&scity={city}&source=2'.format(key_word = self.key_word, city = Spider.city);
+        url   = 'https://www.zhipin.com/job_detail/?query={key_word}&scity={city}&source=2'.format(key_word = self.key_word, city = Spider.city);
         proxy = self.get_proxy()
 
         while (True):
             header = {
-                'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)]
+                'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)],
             }
             try:
                 html = requests.get(url, headers = header, proxies = proxy, timeout = 5).content.decode('utf-8')
             except requests.exceptions.RequestException:
+                print('请求失败, 更换代理, 重新请求, 剩余proxy: %s' % self.proxy.qsize())
+                time.sleep(random.randint(3, 5))
+
                 proxy = self.get_proxy()
                 continue
             else:
@@ -128,11 +133,14 @@ class Spider:
             url    = url_template.format(city = Spider.city, area = area, key_word = self.key_word, ka = l[0])
             while True:
                 header = {
-                    'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)]
+                    'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)],
                 }
                 try:
                     html   = requests.get(url, headers = header, proxies = proxy).content.decode('utf-8')
                 except requests.exceptions.RequestException:
+                    print('请求失败, 更换代理, 重新请求, 剩余proxy: %s' % self.proxy.qsize())
+                    time.sleep(3)
+
                     proxy = self.get_proxy()
                     continue
                 else:
@@ -150,14 +158,14 @@ class Spider:
                     self.write_cli(msg)
 
             sys.stdout.write('\n')
+            time.sleep(random.randint(5, 10))
 
         self.status_len = 0
-        print('\n')
 
     def get_position(self):
         ''' 爬取职位
         '''
-        print('############## 职位信息爬取 ##############')
+        print('\n############## 职位爬取 ##############')
 
         url_template = "https://www.zhipin.com/c{city}/a_{business}-b_{area}-h_{city}/?query={key_word}"
         for area, business in self.area.items():
@@ -170,10 +178,24 @@ class Spider:
                 self.page = 1
                 self.concurrent_crawl(url, area, b)
 
+                print('>>> %s %s 爬取完成 <<<\n' % (area, b))
+
+                # 把职位信息存储进数据库
+                self.position_to_db()
+                time.sleep(random.randint(3, 5))
+
+                # 判断一下proxy, 如果用完, 则终止程序
+                if (not self.proxy.qsize()):
+                    print('Proxy用完, 退出程序.')
+                    raise SystemExit
+            else:
+                print('爬取完成.')
+
+
     def concurrent_crawl(self, url, area, business):
         ''' 多线程爬取
         '''
-        thread_num = 10
+        thread_num  = 5
         thread_list = []
 
         for i in range(thread_num):
@@ -192,7 +214,6 @@ class Spider:
         url_template = url + "&page={page}&ka=page-{page}"
 
         while (True):
-            print('当前页数: %s' % self.page)
             url = url_template.format(page = self.page)
 
             # 修改线程共享变量
@@ -202,16 +223,19 @@ class Spider:
 
             while (True):
                 header = {
-                    'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)]
+                    'User-Agent': Spider.browsers[random.randint(0, len(Spider.browsers) - 1)],
                 }
 
                 # connetion error 则换proxy, proxy失效
                 try:
-                    print('正在请求: %s %s %s页' % (area, business, self.page - 1))
+                    print('爬取: %s %s %s页' % (area, business, self.page - 1))
                     html = requests.get(url, headers = header, proxies = proxy, timeout = 5).content.decode('utf-8')
                 except requests.exceptions.RequestException:
-                    print('proxy失效, 更换proxy重新请求, 剩余proxy: %s' % self.proxy.qsize())
+                    msg = 'proxy失效, 更换proxy, 5s后重新爬取, 剩余proxy: %s' % self.proxy.qsize()
+                    print(msg)
+
                     proxy = self.get_proxy()
+                    time.sleep(5)
                     continue
 
                 soup     = BeautifulSoup(html, 'lxml')
@@ -219,8 +243,9 @@ class Spider:
 
                 # 如果没有job_list, 说明请求过多需要输入验证码, 更换proxy重新请求
                 if (not job_list):
-                    print('请求过多, 要求输入验证码, 更换proxy重新请求, 剩余proxy: %s' % self.proxy.qsize())
+                    print('请求过多, 要求输入验证码, 更换proxy重新爬取, 剩余proxy: %s' % self.proxy.qsize())
                     proxy = self.get_proxy()
+                    time.sleep(random.randint(20, 30))
                     continue
                 # 有数据则退出循环
                 else:
@@ -234,9 +259,8 @@ class Spider:
 
             self.parse_position(job_li, area, business)
 
-            # 此次请求完成, 睡眠5s再进行
-            time.sleep(5)
-        print('%s %s 爬取完成.' % (area, business))
+            # 爬取完此页, 睡眠30~60s
+            time.sleep(random.randint(45, 75))
 
     def parse_position(self, li_list, area, business):
         ''' 解释职位html, 并把职位信息写入sqlite3 数据库
@@ -261,24 +285,37 @@ class Spider:
             company_type = tmp_list[0].replace('<p>', '')
 
             # 职位发布时间
+            span_res = item.find_all('div', class_ = 'job-time')[0].find_all('span', class_ = 'time')[0]
+            job_time = span_res.string.replace('发布于', '')
 
-            # 将职位信息保存到sqlite
-            row = self.db.insert_info(area, business, salary, age, company_type)
-            if row == 0:
-                print('此次插入失败.')
+            if job_time == '昨天':
+                today      = datetime.date.today()
+                yeasterday = today - datetime.timedelta(days = 1)
+                date       = yeasterday
+            else:
+                date = time.strftime('%Y') + '-' + job_time.replace('月', '-').replace('日', '')
+            self.position.put((area, business, salary, age, company_type, date))
+
+    def position_to_db(self):
+        ''' 将数据写进数据库
+        '''
+        while (not self.position.empty()):
+            area, business, salary, age, company_type, date = self.position.get()
+            self.db.insert_info(area, business, salary, age, company_type, date)
 
     def get_proxy(self):
         ''' 获取proxy
         '''
-        proxy = Proxy()
         # 用完proxy, 则退出程序, 不再向下执行
         if (self.proxy.empty()):
-            print('Proxy 已经用完, 退出程序.')
+            print('Proxy 已经用完, 线程 %s 结束.' % threading.currentThread().getName())
             raise SystemExit
         else:
-            my_proxy      = self.proxy.get()
-            protocol      = my_proxy.split(':')[0]
-            proxy         = {protocol: my_proxy}
+            my_proxy1      = self.proxy.get()
+            protocol1      = my_proxy1.split(':')[0]
+            proxy          = {
+                protocol1: my_proxy1
+            }
 
             return proxy
 
