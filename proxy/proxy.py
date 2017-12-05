@@ -114,7 +114,7 @@ class Proxy:
         print('############ 获取代理ip ##############')
         self.parse_html()
 
-        thread_num  = 10
+        thread_num  = 20
         thread_list = []
         start_time  = time.time()
 
