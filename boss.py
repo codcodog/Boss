@@ -1,6 +1,6 @@
 import os
 
-from proxy import proxy
+from proxy import proxy1
 from crawl import spider
 from crawl import db
 
@@ -15,8 +15,8 @@ class Boss:
 
 
 if __name__ == '__main__':
-    # 获取代理ip
-    proxy = proxy.Proxy(Boss.html, Boss.proxy_txt)
+    # 爬取代理ip
+    proxy = proxy1.Proxy1()
     proxy = proxy.run()
 
     # 开始爬取
