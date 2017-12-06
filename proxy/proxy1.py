@@ -25,7 +25,7 @@ class Proxy1:
         '''
         print('########## 爬取高匿代理 #############')
         url_template  = 'http://www.kuaidaili.com/free/inha/%s/'
-        page = 16
+        page = 1
 
         while (not self.proxy.qsize() > self.num):
             url = url_template % page
