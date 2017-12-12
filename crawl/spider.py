@@ -195,7 +195,7 @@ class Spider:
     def concurrent_crawl(self, url, area, business):
         ''' 多线程爬取
         '''
-        thread_num  = 3
+        thread_num  = 1
         thread_list = []
 
         for i in range(thread_num):
