@@ -16,7 +16,7 @@ class Proxy1:
         @param  爬取到proxy的总数
         '''
         self.proxy           = queue.Queue()
-        self.num             = 300
+        self.num             = 200
         self.available_proxy = queue.Queue()
         self.size            = 0
 
@@ -55,7 +55,7 @@ class Proxy1:
 
             print('爬取高匿代理第%s页, 爬取到Proxy: %s' % (page, self.proxy.qsize()))
             page += 1
-            time.sleep(random.randint(15, 30))
+            time.sleep(random.randint(10, 15))
         else:
             self.size = self.proxy.qsize()
             print('爬取完成, 一共爬取了%s个\n' % self.proxy.qsize())
@@ -74,6 +74,48 @@ class Proxy1:
             return res.status_code == 200
         except:
             return False
+
+    def test(self, proxy):
+        ''' 测试代理匿名
+        '''
+        url = 'http://65.49.200.193/'
+        protocol   = proxy.split(':')[0]
+        test_proxy = {protocol: proxy}
+
+        try:
+            res = requests.get(url, proxies = test_proxy, timeout = 3)
+            code = res.status_code
+            html = res.content.decode('utf-8')
+            print('测试ip: %s, 页面返回：%s, code：%s' % (proxy, html, code))
+        except:
+            return None
+
+    def concurrent(self):
+        while (not self.proxy.empty()):
+            proxy = self.proxy.get()
+            self.test(proxy)
+            time.sleep(10)
+
+    def run_test(self):
+        self.crawl_proxy()
+
+        print('########## 检测proxy活性 #############')
+        thread_num  = 1
+        thread_list = []
+
+        # 检测proxy线程
+        for i in range(thread_num):
+            t = threading.Thread(target = self.concurrent)
+            thread_list.append(t)
+
+        for i in thread_list:
+            i.start()
+
+        # 等待子线程全部结束
+        for i in thread_list:
+            i.join()
+
+        print('全部测试完')
 
     def concurrent_test(self):
         ''' 并发测试proxy是否可用
@@ -139,3 +181,7 @@ class Proxy1:
         # 取消写入proxy.txt文件, 直接返回queue对象
         # self.save_proxy()
         return self.available_proxy
+
+if __name__ == '__main__':
+    proxy = Proxy1()
+    proxy.run_test()
