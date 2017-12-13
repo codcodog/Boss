@@ -36,6 +36,7 @@ class Spider:
         @param  当前请求的页数
         @param  sqlite3 数据库对象
         @param  写入数据库的队列: 职位信息
+        @param  正在使用的proxy
         '''
         self.key_word   = key_word
         self.area       = {}
@@ -44,6 +45,7 @@ class Spider:
         self.page       = 1
         self.db         = Db(db_file)
         self.position   = queue.Queue()
+        self.use_proxy  = None
 
     def write_cli(self, msg):
         ''' 命令行输出文本, 不换行
@@ -80,7 +82,7 @@ class Spider:
         print('\n############## 区域爬取 ##############')
 
         url   = 'https://www.zhipin.com/job_detail/?query={key_word}&scity={city}&source=2'.format(key_word = self.key_word, city = Spider.city);
-        proxy = self.get_proxy()
+        proxy = self.use_proxy
 
         while (True):
             header = {
@@ -92,7 +94,8 @@ class Spider:
                 print('请求失败, 更换代理, 重新请求, 剩余proxy: %s' % self.proxy.qsize())
                 time.sleep(random.randint(3, 5))
 
-                proxy = self.get_proxy()
+                self.get_proxy()
+                proxy = self.use_proxy
                 continue
             else:
                 break
@@ -122,7 +125,7 @@ class Spider:
         print('############## 商圈爬取 ##############')
 
         url_template = "https://www.zhipin.com/c{city}/b_{area}-h_{city}/?query={key_word}&ka={ka}"
-        proxy = self.get_proxy()
+        proxy = self.use_proxy
         for area, l in self.area.items():
             msg = ''
             self.status_len = 0
@@ -141,7 +144,8 @@ class Spider:
                     print('请求失败, 更换代理, 重新请求, 剩余proxy: %s' % self.proxy.qsize())
                     time.sleep(3)
 
-                    proxy = self.get_proxy()
+                    self.get_proxy()
+                    proxy = self.use_proxy
                     continue
                 else:
                     break
@@ -176,7 +180,7 @@ class Spider:
                 # 经测试, 20页数据就没了, 这里给100, 若发现没有找到 job list, 则中止, break
                 url = url_template.format(area = area, business = b, city = Spider.city, key_word = self.key_word)
                 self.page = 1
-                self.concurrent_crawl(url, area, b)
+                self.crawl_position(url, area, b)
 
                 print('>>> %s %s 爬取完成 <<<\n' % (area, b))
 
@@ -210,7 +214,7 @@ class Spider:
     def crawl_position(self, url, area, business):
         ''' 爬取职位信息
         '''
-        proxy = self.get_proxy()
+        proxy = self.use_proxy
         url_template = url + "&page={page}&ka=page-{page}"
 
         while (True):
@@ -234,7 +238,8 @@ class Spider:
                     msg = 'proxy失效, 更换proxy, 5s后重新爬取, 剩余proxy: %s' % self.proxy.qsize()
                     print(msg)
 
-                    proxy = self.get_proxy()
+                    self.get_proxy()
+                    proxy = self.use_proxy
                     time.sleep(5)
                     continue
 
@@ -244,7 +249,8 @@ class Spider:
                 # 如果没有job_list, 说明请求过多需要输入验证码, 更换proxy重新请求
                 if (not job_list):
                     print('请求过多, 要求输入验证码, 更换proxy重新爬取, 剩余proxy: %s' % self.proxy.qsize())
-                    proxy = self.get_proxy()
+                    self.get_proxy()
+                    proxy = self.use_proxy
                     time.sleep(random.randint(20, 30))
                     continue
                 # 有数据则退出循环
@@ -259,8 +265,8 @@ class Spider:
 
             self.parse_position(job_li, area, business)
 
-            # 爬取完此页, 睡眠30~60s
-            time.sleep(random.randint(45, 75))
+            # 爬取完此页, 睡眠
+            time.sleep(random.randint(60, 75))
 
     def parse_position(self, li_list, area, business):
         ''' 解释职位html, 并把职位信息写入sqlite3 数据库
@@ -318,9 +324,10 @@ class Spider:
                 protocol1: my_proxy1
             }
 
-            return proxy
+            self.use_proxy = proxy
 
     def run(self):
+        self.get_proxy()
         self.get_area()
         self.get_business()
         self.get_position()
