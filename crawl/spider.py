@@ -307,8 +307,8 @@ class Spider:
         ''' 将数据写进数据库
         '''
         while (not self.position.empty()):
-            area, business, salary, age, company_type, date = self.position.get()
-            self.db.insert_info(area, business, salary, age, company_type, date)
+            area, business, salary, age, company_type = self.position.get()
+            self.db.insert_info(area, business, salary, age, company_type)
 
     def get_proxy(self):
         ''' 获取proxy
