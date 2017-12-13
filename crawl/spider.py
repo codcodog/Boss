@@ -285,16 +285,17 @@ class Spider:
             company_type = tmp_list[0].replace('<p>', '')
 
             # 职位发布时间
-            span_res = item.find_all('div', class_ = 'job-time')[0].find_all('span', class_ = 'time')[0]
-            job_time = span_res.string.replace('发布于', '')
+            # span_res = item.find_all('div', class_ = 'job-time')[0].find_all('span', class_ = 'time')[0]
+            # job_time = span_res.string.replace('发布于', '')
 
-            if job_time == '昨天':
-                today      = datetime.date.today()
-                yeasterday = today - datetime.timedelta(days = 1)
-                date       = yeasterday
-            else:
-                date = time.strftime('%Y') + '-' + job_time.replace('月', '-').replace('日', '')
-            self.position.put((area, business, salary, age, company_type, date))
+            # if job_time == '昨天':
+            #     today      = datetime.date.today()
+            #     yeasterday = today - datetime.timedelta(days = 1)
+            #     date       = yeasterday
+            # else:
+            #     date = time.strftime('%Y') + '-' + job_time.replace('月', '-').replace('日', '')
+            # self.position.put((area, business, salary, age, company_type, date))
+            self.position.put((area, business, salary, age, company_type))
 
     def position_to_db(self):
         ''' 将数据写进数据库

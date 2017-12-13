@@ -29,7 +29,7 @@ class Db:
         sql = "DROP TABLE IF EXISTS '" + self.table_name + "'"
         cursor.execute(sql)
 
-        sql = "create table %s (id integer primary key not null, area varchar(25) not null, business varchar(25) not null, salary varchar(25) not null,age varchar(25) not null, type varchar(25) not null, date text not null)" % self.table_name
+        sql = "create table %s (id integer primary key not null, area varchar(25) not null, business varchar(25) not null, salary varchar(25) not null,age varchar(25) not null, type varchar(25) not null)" % self.table_name
         cursor.execute(sql)
 
         cursor.close()
@@ -38,7 +38,7 @@ class Db:
     def insert_info(self, *args):
         ''' 插入数据
         '''
-        sql = "insert into boss (area, business, salary, age, type, date) values ('%s', '%s', '%s', '%s', '%s', '%s')" % args
+        sql = "insert into boss (area, business, salary, age, type, date) values ('%s', '%s', '%s', '%s', '%s')" % args
         row = self.conn.cursor().execute(sql).rowcount
         self.conn.cursor().close()
         self.conn.commit()
