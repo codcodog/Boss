@@ -261,8 +261,8 @@ class Analysis
         $res      = $this->industry_category();
         $industry = array_column($res, 'type');
 
-        $age_type     = $this->ageType();
-        $age_type     = array_column($age_type, 'age');
+        $age_type = $this->ageType();
+        $age_type = array_column($age_type, 'age');
 
         $i    = 0;
         $data = [];
@@ -298,8 +298,8 @@ class Analysis
         $res      = $this->industry_category();
         $industry = array_column($res, 'type');
 
-        $age_type     = $this->ageType();
-        $age_type     = array_column($age_type, 'age');
+        $age_type = $this->ageType();
+        $age_type = array_column($age_type, 'age');
 
         $i    = 0;
         $data = [];
@@ -355,9 +355,9 @@ class Analysis
         $data                             = json_encode($data);
 
         list($age_type5, $business5, $data5) = $this->business_age_salary();
-        $age_type5                         = json_encode(array_keys($age_type5));
-        $business_type5                    = json_encode($business5);
-        $data5                             = json_encode($data5);
+        $age_type5                           = json_encode(array_keys($age_type5));
+        $business_type5                      = json_encode($business5);
+        $data5                               = json_encode($data5);
 
         list($industry6, $age6, $data6) = $this->industryWorks();
         $industry6                      = json_encode($industry6);
@@ -373,25 +373,25 @@ class Analysis
         $js_code = <<< JAVASCRIPT
 <script type='text/javascript'>
 
-var area         = $area_data;
-var business     = $business_data;
-var industry     = $industry_data;
+var area      = $area_data;
+var business  = $business_data;
+var industry  = $industry_data;
 
-var age_type     = $age_type;
-var type4        = $business_type;
-var data4        = $data;
+var age_type  = $age_type;
+var type4     = $business_type;
+var data4     = $data;
 
-var age_type5    = $age_type5;
-var type5        = $business_type5;
-var data5        = $data5;
+var age_type5 = $age_type5;
+var type5     = $business_type5;
+var data5     = $data5;
 
-var industry6    = $industry6;
-var age6         = $age6;
-var data6        = $data6;
+var industry6 = $industry6;
+var age6      = $age6;
+var data6     = $data6;
 
-var industry7    = $industry7;
-var age7         = $age7;
-var data7        = $data7;
+var industry7 = $industry7;
+var age7      = $age7;
+var data7     = $data7;
 
 </script>
 JAVASCRIPT;
