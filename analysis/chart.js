@@ -58,7 +58,7 @@ for (var i in business) {
 
 option = {
     title: {
-        text: name + "商业区职位发布情况 (前30)"
+        text: "商业区职位发布情况 (前30)"
     },
     tooltip: {},
     legend: {
