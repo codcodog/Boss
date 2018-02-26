@@ -68,4 +68,4 @@ $ nohup python -u boss.py > crawl.log &
 > 可以看到, 高匿代理让别人无法发现你是在用代理.
 
 ### 图表数据
-[图表分析](http://65.49.200.193/boss/analysis.php)
+[图表分析](http://boss.codcodog.me)
